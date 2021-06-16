@@ -9,6 +9,12 @@ single_read_numb(Number):-
     string_to_atom(Str,Atom),
     atom_number(Atom,Number).
 
+genname(Name) :- 
+    get_value(alarm,count,Count), 
+    Count1 is Count+1,
+    new_value(alarm,count,Count1),
+    atom_concat(alarm,Count1,Name).
+
 /*--------------------------------------------------*/
 /*-------------------definições---------------------*/
 /*--------------------------------------------------*/
@@ -21,7 +27,7 @@ def_all:-
     def_alarm.
 
 def_is_a:-
-    new_relation(is_a, transitive, none, nil). 
+    new_relation(is_a, transitive, all, nil). 
 
 def_factory:-
     new_frame(factory),
@@ -66,29 +72,25 @@ def_materials:-
 def_alarm:- 
     new_frame(alarm),
     new_slot(alarm,event), 
-    new_slot(alarm,temp),
-    new_slot(alarm,date), 
-    new_slot(alarm,count, 0).
+    new_slot(alarm,time_stamp), 
+    new_slot(alarm,count, 0),
 
-genmsg(Time, Event, Date) :- 
-    genname(Name), 
-    new_frame(Name),
-    new_slot(Name,is_a,alarm),
-    new_value(Name,event,Event),
-    new_value(Name,temp,Time),
-    new_value(Name,date,Date).
-
-genname(Name) :- 
-    get_value(alarm,count,Count), 
-    Count1 is Count+1,
-    new_value(alarm,count,Count1),
-    atom_concat(alarm,Count1,Name).
+    % Metodos
+    new_slot(alarm,genmsg,genmsg_F).
 
 /*--------------------------------------------------*/
 /*---------------------Metodos----------------------*/
 /*--------------------------------------------------*/
 
-
+genmsg_F(Event, Time_stamp) :- 
+    genname(Name),
+    new_frame(Name),
+    new_slot(Name,is_a,alarm),
+    new_value(Name,event,Event),
+    new_value(Name,time_stamp,Time_stamp),
+    write('New alarm: '), 
+    write(Name), 
+    nl.
 
 /*--------------------------------------------------*/
 /*--------------------------------------------------*/
