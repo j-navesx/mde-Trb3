@@ -208,3 +208,14 @@ test_mat(Name_val,Ref_val,Stock_Quant_val):-
     
 get(Name,Ref,Stock_Quant):-
     get_all_slots(material,[_,Name,_,Ref,_,_,Stock_Quant]).
+
+/*--------------------------------------------------*/
+/*--------------------------------------------------*/
+/*--------------------------------------------------*/
+
+list_product_materials(Product):-
+    get_value(Product,material_list,Material_List),
+    format('Materials for ~w:~n',[Product]),
+    forall((member((Material,Stock),Material_List)),
+        format('~w: ~w~n',[Material,Stock])
+    ).
