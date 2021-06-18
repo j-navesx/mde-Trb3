@@ -471,7 +471,7 @@ product_menu(Op):-
     write('2 -> Visualizar descricao de produto'),nl,
     write('3 -> Visualizar pecas de produto'),nl,
     write('4 -> Alterar descricao de produto'),nl,
-    write('5 -> Adicionar material de produto'),nl,
+    write('5 -> Adicionar material a produto'),nl,
     write('6 -> Remover material de produto'),nl,
     write('7 -> Eliminar produto existente'),nl,
     write('8 -> Exit'), nl,
