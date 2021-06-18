@@ -7,10 +7,22 @@
 conc([], L, L).
 conc([C|R], L, [C|T]) :- conc(R, L, T).
 
+member(E,[E|_]).
+member(E,[_|R]) :- member(E,R).
+
+press_any_key(_):-
+    write('Press any key: '),
+    get_single_char(_),
+    nl.
+
 single_read_numb(Number):-
     read_string(user_input,"\n","\r",_,Str),
     string_to_atom(Str,Atom),
     atom_number(Atom,Number).
+
+single_read_string(Atom):-
+    read_string(user_input,"\n","\r",_,Str),
+    string_to_atom(Str,Atom).
 
 genname(Name) :- 
     get_value(alarm,count,Count), 
@@ -21,15 +33,24 @@ genname(Name) :-
 fail_if_product_exists(Product_name):-
     not(frame_exists(Product_name)),!.
 fail_if_product_exists(_):-
-    write('The product already exists'),!,fail.
+    write('The product already exists'),nl,!,fail.
 
 fail_if_material_exists(Material_name):-
     not(frame_exists(Material_name)),!.
 fail_if_material_exists(_):-
-    write('The material already registered'),!,fail.
+    write('The material already registered'),nl,!,fail.
+
+if_material_exists(Material_name):-
+    frame_exists(Material_name),!.
+if_material_exists(_):-
+    write('Material not registered'),nl,!,fail.
+
+if_material_exists_in_list(Material_name,[[Material_name,_]|_]).
+if_material_exists_in_list(Material_name,[_|Rest]):-
+    if_material_exists_in_list(Material_name,Rest).
 
 /*--------------------------------------------------*/
-/*-------------------definições---------------------*/
+/*-------------------DEFINITION---------------------*/
 /*--------------------------------------------------*/
 
 def_all:-
@@ -37,7 +58,8 @@ def_all:-
     def_factory,
     def_product,
     def_materials,
-    def_alarm.
+    def_alarm,
+    def_test.
 
 def_is_a:-
     new_relation(is_a, transitive, all, nil). 
@@ -73,18 +95,23 @@ def_product:-
     new_slot(product,encomenda), % Demon - caso não haja stock manda fazer 
     new_slot(product,fabrico). % Demon - caso não haja peças necessárias (generate alarm msg)
 
+    % Demons
+
 def_materials:-
     new_frame(material),
     new_slot(material,name),
     new_slot(material,reference),
     new_slot(material,stock_quantity),
+    new_slot(material,product_list),
 
     % Metodos
     new_slot(material,create_material,create_material_F),
     new_slot(material,read_material_desc,read_material_desc_F),
     new_slot(material,set_material_desc,set_material_desc_F), 
     new_slot(material,delete_material,delete_material_F),
-    new_slot(material,request_materials).
+    new_slot(material,add_product_material,add_product_material_F),
+    new_slot(material,rmv_product_material,rmv_product_material_F),
+    new_slot(material,request_materials,request_materials_F).
 
 def_alarm:- 
     new_frame(alarm),
@@ -96,10 +123,10 @@ def_alarm:-
     new_slot(alarm,genmsg,genmsg_F).
 
 /*--------------------------------------------------*/
-/*---------------------Metodos----------------------*/
+/*---------------------METHODS----------------------*/
 /*--------------------------------------------------*/
 
-/*---------------------factory----------------------*/
+/*---------------------FACTORY----------------------*/
 
 set_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val):-
     (nonvar(Name_val)->new_value(Factory,name,Name_val);true),
@@ -112,7 +139,7 @@ add_prod_to_list_F(Factory,Product):-
 delete_prod_from_list_F(Factory,Product):-
     remove_value(Factory,product_list,Product).
 
-/*----------------------alarm-----------------------*/
+/*----------------------ALARM-----------------------*/
 
 genmsg_F(_, Event, Time_stamp) :- 
     genname(Name),
@@ -124,62 +151,80 @@ genmsg_F(_, Event, Time_stamp) :-
     write(Name), 
     nl.
 
-/*---------------------product----------------------*/
+/*---------------------PRODUCT----------------------*/
 
 create_prod_F(Product_frame, Product_name):-
     fail_if_product_exists(Product_name),
     new_frame(Product_name),
     new_slot(Product_name,is_a,Product_frame),
-    call_method_1(factory,add_prod_to_list,Product_name).
+    call_method_1(factory,add_prod_to_list,Product_name),
+    write('Product created'),nl.
 
 read_prod_desc_F(Product_frame,Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val):-
-    get_all_slots(product,[_,_,_,_,Material_list,Min_stock,Name,Price,_,Ref,_,Stock_log_list,Stock_Quant]),
-    get_value(Product_frame,Name,Name_val),
-    get_value(Product_frame,Ref,Ref_val),
-    get_value(Product_frame,Stock_Quant,Stock_Quant_val),
-    get_value(Product_frame,Stock_log_list,Stock_log_list_val),
-    get_value(Product_frame,Material_list,Material_list_val),
-    get_value(Product_frame,Price,Price_val),
-    get_value(Product_frame,Min_stock,Min_stock_val).
+    get_value(Product_frame,name,Name_val),
+    get_value(Product_frame,reference,Ref_val),
+    get_value(Product_frame,stock_quantity,Stock_Quant_val),
+    get_value(Product_frame,stock_log_list,Stock_log_list_val),
+    get_value(Product_frame,material_list,Material_list_val),
+    get_value(Product_frame,price,Price_val),
+    get_value(Product_frame,min_stock,Min_stock_val).
 
 set_prod_desc_F(Product_frame,Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val):-
-    get_all_slots(product,[_,_,_,_,Material_list,Min_stock,Name,Price,_,Ref,_,Stock_log_list,Stock_Quant]),
-    (nonvar(Name_val)->new_value(Product_frame,Name,Name_val);true),
-    (nonvar(Ref_val)->new_value(Product_frame,Ref,Ref_val);true),
-    (nonvar(Stock_Quant_val)->new_value(Product_frame,Stock_Quant,Stock_Quant_val);true),
-    (nonvar(Stock_log_list_val)->new_value(Product_frame,Stock_log_list,Stock_log_list_val);true),
-    (nonvar(Material_list_val)->new_value(Product_frame,Material_list,Material_list_val);true),
-    (nonvar(Price_val)->new_value(Product_frame,Price,Price_val);true),
-    (nonvar(Min_stock_val)->new_value(Product_frame,Min_stock,Min_stock_val);true).
+    (nonvar(Name_val)->new_value(Product_frame,name,Name_val);true),
+    (nonvar(Ref_val)->new_value(Product_frame,reference,Ref_val);true),
+    (nonvar(Stock_Quant_val)->new_value(Product_frame,stock_quantity,Stock_Quant_val);true),
+    (nonvar(Stock_log_list_val)->new_value(Product_frame,stock_log_list,Stock_log_list_val);true),
+    (nonvar(Material_list_val)->new_value(Product_frame,material_list,Material_list_val);true),
+    (nonvar(Price_val)->new_value(Product_frame,price,Price_val);true),
+    (nonvar(Min_stock_val)->new_value(Product_frame,min_stock,Min_stock_val);true).
 
 delete_prod_F(Product_frame):-
     delete_frame(Product_frame),
     call_method_1(factory,delete_prod_from_list,Product_frame).
 
-/*--------------------material----------------------*/
+encomenda_F. %TODO
+
+fabrico_F. %TODO
+
+/*--------------------MATERIAL----------------------*/
 
 create_material_F(Material_frame, Material_name):-
     fail_if_material_exists(Material_name),
     new_frame(Material_name),
-    new_slot(Material_name,is_a,Material_frame).
+    new_slot(Material_name,is_a,Material_frame),
+    write('Material created'),nl.
 
-read_material_desc_F(Material_frame,Name_val,Ref_val,Stock_Quant_val):-
-    get_all_slots(material,[_,_,Name,_,Ref,_,_,Stock_Quant]),
-    get_value(Material_frame,Name,Name_val),
-    get_value(Material_frame,Ref,Ref_val),
-    get_value(Material_frame,Stock_Quant,Stock_Quant_val).
+read_material_desc_F(Material_frame,Name_val,Ref_val,Stock_Quant_val,Product_list_val):-
+    get_value(Material_frame,name,Name_val),
+    get_value(Material_frame,reference,Ref_val),
+    get_value(Material_frame,stock_quantity,Stock_Quant_val),
+    get_values(Material_frame,product_list,Product_list_val).
 
-set_material_desc_F(Material_frame,Name_val,Ref_val,Stock_Quant_val):-
-    get_all_slots(material,[_,_,Name,_,Ref,_,_,Stock_Quant]),
-    (nonvar(Name_val)->new_value(Material_frame,Name,Name_val);true),
-    (nonvar(Ref_val)->new_value(Material_frame,Ref,Ref_val);true),
-    (nonvar(Stock_Quant_val)->new_value(Material_frame,Stock_Quant,Stock_Quant_val);true).
+set_material_desc_F(Material_frame,Name_val,Ref_val,Stock_Quant_val,Product_list_val):-
+    (nonvar(Name_val)->new_value(Material_frame,name,Name_val);true),
+    (nonvar(Ref_val)->new_value(Material_frame,reference,Ref_val);true),
+    (nonvar(Stock_Quant_val)->new_value(Material_frame,stock_quantity,Stock_Quant_val);true),
+    (nonvar(Product_list_val)->new_value(Material_frame,product_list,Product_list_val);true).
 
 delete_material_F(Material_frame):-
     delete_frame(Material_frame).
 
+add_product_material_F(Material_frame,Product):-
+    add_value(Material_frame,product_list,Product).
+
+rmv_product_material_F(Material_frame,Product):-
+    remove_value(Material_frame,product_list,Product).
+
+request_materials_F. %TODO
+
 /*--------------------------------------------------*/
+/*---------------------DEMONS-----------------------*/
 /*--------------------------------------------------*/
+
+
+
+/*--------------------------------------------------*/
+/*----------------------TEST------------------------*/
 /*--------------------------------------------------*/
 
 test_prod(Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val):-
@@ -187,11 +232,10 @@ test_prod(Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,
     call_method(product,create_prod,[Product_frame]),
     show_frame(Product_frame),
     show_frame(factory),
-    call_method(Product_frame,set_prod_desc,[hallo,123,321,[[bla1,23],[bla2,28]],[[p1,23],[p2,28]],23,50]),
+    call_method(Product_frame,set_prod_desc,[hallo,123,321,23,50]),
     show_frame(Product_frame),
     call_method(Product_frame,read_prod_desc,[Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val]),
     write(Name_val),nl,write(Ref_val),nl,write(Stock_Quant_val),nl,write(Stock_log_list_val),nl,write(Material_list_val),nl,write(Price_val),nl,write(Min_stock_val),nl,
-    call_method_0(Product_frame,delete_prod),
     show_frame(factory),
     show_frame(Product_frame).
 
@@ -201,21 +245,292 @@ test_mat(Name_val,Ref_val,Stock_Quant_val):-
     show_frame(Material_frame),
     call_method(Material_frame,set_material_desc,[hallo,123,321]),
     show_frame(Material_frame),
-    call_method(Material_frame,read_material_desc,[Name_val,Ref_val,Stock_Quant_val]),
+    call_method(Material_frame,read_material_desc,[Name_val,Ref_val,Stock_Quant_val,_]),
     write(Name_val),nl,write(Ref_val),nl,write(Stock_Quant_val),nl,
-    call_method_0(Material_frame,delete_material),
     show_frame(Material_frame).
     
 get(Name,Ref,Stock_Quant):-
     get_all_slots(material,[_,Name,_,Ref,_,_,Stock_Quant]).
 
+def_test:-
+    call_method(product,create_prod,[product1]),
+    call_method(product1,set_prod_desc,[product1,123,321,_,_,246,50]),
+
+    call_method(product,create_prod,[product2]),
+    call_method(product2,set_prod_desc,[product2,123,321,_,_,246,50]),
+
+    call_method(material,create_material,[material1]),
+    call_method(material1,set_material_desc,[material1,123,321,_]),
+
+    call_method(material,create_material,[material2]),
+    call_method(material2,set_material_desc,[material2,123,321,_]),
+
+    call_method(material,create_material,[material3]),
+    call_method(material3,set_material_desc,[material3,123,321,_]),
+
+    call_method(material,create_material,[material4]),
+    call_method(material4,set_material_desc,[material4,123,321,_]).
+
 /*--------------------------------------------------*/
 /*--------------------------------------------------*/
 /*--------------------------------------------------*/
 
-list_product_materials(Product):-
-    get_value(Product,material_list,Material_List),
-    format('Materials for ~w:~n',[Product]),
-    forall((member((Material,Stock),Material_List)),
+list_product_materials:-
+    write('Enter product name: '),
+    single_read_string(Product_name),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    get_value(Product_name,material_list,Material_List),
+    format('Materials for ~w:~n',[Product_name]),
+    forall((member([Material,Stock],Material_List)),
         format('~w: ~w~n',[Material,Stock])
     ).
+
+/*--------------------------------------------------*/
+/*------------ADD MATERIALS TO PRODUCT--------------*/
+/*--------------------------------------------------*/
+
+read_set_prods_material(Product,Material_list):-
+    write('Enter material (Enter stop to finish): '),
+    single_read_string(Material),
+    process_set_prods_material(Product,Material_list,Material),!.
+
+process_set_prods_material(Product,Material_list,stop):-
+    call_method(Product,set_prod_desc,[_,_,_,_,Material_list,_,_]),!.
+process_set_prods_material(Product,Material_list,Material):-
+    dif(Material, stop),
+    (if_material_exists(Material)->true;fail),
+    (if_material_exists_in_list(Material,Material_list)->(write('Material already in list'),nl,fail);true),
+    call_method(Material,add_product_material,[Product]),
+    write('Enter necessary material amount: '),
+    single_read_numb(Amount),
+    conc([Material],[Amount],Material_tuple),
+    conc(Material_list,[Material_tuple],Material_list1),
+    read_set_prods_material(Product,Material_list1),!.
+process_set_prods_material(Product,Material_list,_):-
+    read_set_prods_material(Product,Material_list).
+
+add_materials_to_list:-
+    write('Enter product name: '),
+    single_read_string(Product),
+    (frame_exists(Product)->true;(write('Product not resgistered'),press_any_key(_),fail)),
+    call_method(Product,read_prod_desc,[_,_,_,_,Material_list,_,_]),
+    read_set_prods_material(Product,Material_list).
+
+/*--------------------------------------------------*/
+/*-----------RMV MATERIALS FROM PRODUCT-------------*/
+/*--------------------------------------------------*/
+
+read_rmv_prods_material(Product,Material_list):-
+    write('Enter material (Enter stop to finish): '),
+    single_read_string(Material),
+    process_rmv_prods_material(Product,Material_list,Material),!.
+
+process_rmv_prods_material(Product,Material_list,stop):-
+    call_method(Product,set_prod_desc,[_,_,_,_,Material_list,_,_]),!.
+process_rmv_prods_material(Product,Material_list,Material):-
+    dif(Material, stop),
+    (if_material_exists(Material)->true;fail),
+    (if_material_exists_in_list(Material,Material_list)->true;(write('Material not in list'),nl,fail)),
+    call_method(Material,rmv_product_material,[Product]),
+    delete(Material_list,[Material,_],Material_list1),
+    read_rmv_prods_material(Product,Material_list1),!.
+process_rmv_prods_material(Product,Material_list,_):-
+    read_rmv_prods_material(Product,Material_list).
+
+rmv_materials_from_list:-
+    write('Enter product name: '),
+    single_read_string(Product),
+    (frame_exists(Product)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    call_method(Product,read_prod_desc,[_,_,_,_,Material_list,_,_]),
+    read_rmv_prods_material(Product,Material_list).
+
+/*--------------------------------------------------*/
+/*------------------PRODUCT CRUD--------------------*/
+/*--------------------------------------------------*/
+
+create_product:-
+    write('Enter product name: '),
+    single_read_string(Product_name),
+    fail_if_product_exists(Product_name),
+    write('Enter product reference: '),
+    single_read_string(Product_ref),
+    call_method(product,create_prod,[Product_name]),
+    call_method(Product_name,set_prod_desc,[Product_name,Product_ref,_,_,_,_,_]).
+
+read_product_desc:-
+    write('Enter product name: '),
+    single_read_string(Product_name),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    call_method(Product_name,read_prod_desc,[Name,Ref,Stock_Quant,_,_,Price,_]),
+    format('Name: ~w ~nReference: ~w ~nStock: ~w ~nPrice: ~w ~n',[Name,Ref,Stock_Quant,Price]).
+
+alter_product_desc:-
+    write('Enter product name: '),
+    single_read_string(Product_name),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    write('Enter product stock quantity (press enter to skip): '),
+    (single_read_numb(Stock_Quant)->(call_method(Product_name,set_prod_desc,[_,_,Stock_Quant,_,_,_,_]));true),
+    write('Enter product price (press enter to skip): '),
+    (single_read_numb(Price)->(call_method(Product_name,set_prod_desc,[_,_,_,_,_,Price,_]));true).
+
+rmv_product_from_material_list(_,[]).
+rmv_product_from_material_list(Product_name,[[Material,_]|Rest]):-
+    call_method(Material,rmv_product_material,[Product_name]),
+    rmv_product_from_material_list(Product_name,Rest).
+
+rmv_product:-
+    write('Enter product name: '),
+    single_read_string(Product_name),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    call_method(Product_name,read_prod_desc,[_,_,_,_,Material_list,_,_]),
+    rmv_product_from_material_list(Product_name,Material_list),
+    call_method_0(Product_name,delete_prod),!.
+
+
+
+/*--------------------------------------------------*/
+/*------------------MATERIAL CRUD-------------------*/
+/*--------------------------------------------------*/
+
+create_material:-
+    write('Enter material name: '),
+    single_read_string(Material_name),
+    fail_if_material_exists(Material_name),
+    write('Enter material reference: '),
+    single_read_string(Material_ref),
+    call_method(material,create_material,[Material_name]),
+    call_method(Material_name,set_material_desc,[Material_name,Material_ref,_,_]).
+
+read_material_desc:-
+    write('Enter material name: '),
+    single_read_string(Material_name),
+    (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,press_any_key(_),fail)),
+    call_method(Material_name,read_material_desc,[Name,Ref,Stock_Quant,_]),
+    format('Name: ~w ~nReference: ~w ~nStock: ~w ~n',[Name,Ref,Stock_Quant]).
+
+alter_material_desc:-
+    write('Enter material name: '),
+    single_read_string(Material_name),
+    (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,press_any_key(_),fail)),
+    write('Enter material stock quantity (press enter to skip): '),
+    (single_read_numb(Stock_Quant)->(call_method(Material_name,set_material_desc,[_,_,Stock_Quant,_]));true).
+
+rmv_material_from_product(_,[]).
+rmv_material_from_product(Material_name,[Product|Rest]):-
+    call_method(Product,read_prod_desc,[_,_,_,_,Material_list,_,_]),
+    delete(Material_list,[Material_name,_],Material_list1),
+    call_method(Product,set_prod_desc,[_,_,_,_,Material_list1,_,_]),
+    rmv_material_from_product(Material_name,Rest).
+
+rmv_material:-
+    write('Enter material name: '),
+    single_read_string(Material_name),
+    (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,press_any_key(_),fail)),
+    call_method(Material_name,read_material_desc,[_,_,_,Product_list]),
+    rmv_material_from_product(Material_name,Product_list),
+    call_method_0(Material_name,delete_material),!.
+
+/*--------------------------------------------------*/
+/*----------------------MENU------------------------*/
+/*--------------------------------------------------*/
+
+menu :- 
+    menu(_).
+
+menu(Op) :- 
+    nl,
+    write('------------------------------'),nl,
+    write('Gestao da base de conhecimento'),nl, 
+    write('------------------------------'),nl,
+    nl,
+    write('1 -> Encomendar produtos'),nl,
+    write('2 -> Gestao de produtos'),nl,
+    write('3 -> Gestao de pecas'),nl,
+    write('4 -> Listagem'),nl,
+    write('5 -> Exit'), nl,
+    single_read_numb(Op),
+    process_main_menu(Op),
+    menu(_),
+    !.
+menu(_).
+
+process_main_menu(Op):-
+    (Op >= 1, Op =< 5), %valid?
+    exec(Op).
+process_main_menu(Op):-
+    (Op < 1 ; Op > 5), %not valid?
+    menu(_).
+
+product_menu(Op):-
+    nl,
+    write('-----------------'),nl,
+    write('Gestao de produto'),nl, 
+    write('-----------------'),nl,
+    nl,
+    write('1 -> Criar novo produto'),nl,
+    write('2 -> Visualizar descricao de produto'),nl,
+    write('3 -> Visualizar pecas de produto'),nl,
+    write('4 -> Alterar descricao de produto'),nl,
+    write('5 -> Adicionar material de produto'),nl,
+    write('6 -> Remover material de produto'),nl,
+    write('7 -> Eliminar produto existente'),nl,
+    write('8 -> Exit'), nl,
+    single_read_numb(Op1),
+    Op is Op1 + 10,
+    process_product_menu(Op),
+    product_menu(_),
+    !.
+product_menu(_).
+
+process_product_menu(Op):-
+    (Op >= 11, Op =< 18), %valid?
+    exec(Op).
+process_product_menu(Op):-
+    (Op < 11 ; Op > 18), %not valid?
+    product_menu(_).
+
+material_menu(Op):-
+    nl,
+    write('------------------'),nl,
+    write('Gestao de material'),nl, 
+    write('------------------'),nl,
+    nl,
+    write('1 -> Criar novo material'),nl,
+    write('2 -> Visualizar descricao de material'),nl,
+    write('3 -> Alterar descricao de material'),nl,
+    write('4 -> Eliminar material existente'),nl,
+    write('5 -> Exit'), nl,
+    single_read_numb(Op1),
+    Op is Op1 + 20,
+    process_material_menu(Op),
+    material_menu(_),
+    !.
+material_menu(_).
+
+process_material_menu(Op):-
+    (Op >= 21, Op =< 25), %valid?
+    exec(Op).
+process_material_menu(Op):-
+    (Op < 21 ; Op > 25), %not valid?
+    material_menu(_).
+
+exec(1).
+exec(2):- product_menu(_).
+exec(3):- material_menu(_).
+exec(4).
+exec(5):- fail.
+
+exec(11):- create_product.
+exec(12):- read_product_desc.
+exec(13):- list_product_materials,press_any_key(_).
+exec(14):- alter_product_desc.
+exec(15):- add_materials_to_list.
+exec(16):- rmv_materials_from_list.
+exec(17):- rmv_product.
+exec(18):- fail.
+
+exec(21):- create_material.
+exec(22):- read_material_desc.
+exec(23):- alter_material_desc.
+exec(24):- rmv_material.
+exec(25):- fail.
