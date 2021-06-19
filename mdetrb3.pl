@@ -20,6 +20,33 @@ single_read_numb(Number):-
     string_to_atom(Str,Atom),
     atom_number(Atom,Number).
 
+single_read_option_1(Op):-
+    write('-> '),
+    read_string(user_input,"\n","\r",_,Str),
+    string_to_atom(Str,Atom),
+    atom_number(Atom,Op),
+    (Op >= 1, Op =< 5),!.
+single_read_option_1(Op):-
+    single_read_option_1(Op).
+
+single_read_option_2(Op):-
+    write('-> '),
+    read_string(user_input,"\n","\r",_,Str),
+    string_to_atom(Str,Atom),
+    atom_number(Atom,Op),
+    (Op >= 1, Op =< 8),!.
+single_read_option_2(Op):-
+    single_read_option_2(Op).
+
+single_read_option_3(Op):-
+    write('-> '),
+    read_string(user_input,"\n","\r",_,Str),
+    string_to_atom(Str,Atom),
+    atom_number(Atom,Op),
+    (Op >= 1, Op =< 5),!.
+single_read_option_3(Op):-
+    single_read_option_3(Op).
+
 single_read_string(Atom):-
     read_string(user_input,"\n","\r",_,Str),
     string_to_atom(Str,Atom).
@@ -448,18 +475,11 @@ menu(Op) :-
     write('3 -> Gestao de pecas'),nl,
     write('4 -> Listagem'),nl,
     write('5 -> Exit'), nl,
-    single_read_numb(Op),
-    process_main_menu(Op),
+    single_read_option_1(Op),
+    exec(Op),
     menu(_),
     !.
 menu(_).
-
-process_main_menu(Op):-
-    (Op >= 1, Op =< 5), %valid?
-    exec(Op).
-process_main_menu(Op):-
-    (Op < 1 ; Op > 5), %not valid?
-    menu(_).
 
 product_menu(Op):-
     nl,
@@ -475,19 +495,12 @@ product_menu(Op):-
     write('6 -> Remover material de produto'),nl,
     write('7 -> Eliminar produto existente'),nl,
     write('8 -> Exit'), nl,
-    single_read_numb(Op1),
+    single_read_option_2(Op1),
     Op is Op1 + 10,
-    process_product_menu(Op),
+    exec(Op),
     product_menu(_),
     !.
 product_menu(_).
-
-process_product_menu(Op):-
-    (Op >= 11, Op =< 18), %valid?
-    exec(Op).
-process_product_menu(Op):-
-    (Op < 11 ; Op > 18), %not valid?
-    product_menu(_).
 
 material_menu(Op):-
     nl,
@@ -500,25 +513,18 @@ material_menu(Op):-
     write('3 -> Alterar descricao de material'),nl,
     write('4 -> Eliminar material existente'),nl,
     write('5 -> Exit'), nl,
-    single_read_numb(Op1),
+    single_read_option_3(Op1),
     Op is Op1 + 20,
-    process_material_menu(Op),
+    exec(Op),
     material_menu(_),
     !.
 material_menu(_).
-
-process_material_menu(Op):-
-    (Op >= 21, Op =< 25), %valid?
-    exec(Op).
-process_material_menu(Op):-
-    (Op < 21 ; Op > 25), %not valid?
-    material_menu(_).
 
 exec(1).
 exec(2):- product_menu(_).
 exec(3):- material_menu(_).
 exec(4).
-exec(5):- fail.
+exec(5):- !,fail.
 
 exec(11):- create_product.
 exec(12):- read_product_desc.
