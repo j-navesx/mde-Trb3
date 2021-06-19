@@ -102,7 +102,8 @@ def_factory:-
     % Metodos
     new_slot(factory,set_factory_desc,set_factory_desc_F),
     new_slot(factory,add_prod_to_list,add_prod_to_list_F),
-    new_slot(factory,delete_prod_from_list,delete_prod_from_list_F).
+    new_slot(factory,delete_prod_from_list,delete_prod_from_list_F),
+    new_slot(factory,read_factory_desc,read_fact_desc_F).
 
 def_product:-
     new_frame(product),
@@ -162,6 +163,13 @@ set_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val):-
 
 add_prod_to_list_F(Factory,Product):-
     add_value(Factory,product_list,Product).
+
+read_fact_desc_F(Factory,Name_val,City_val,Max_capacity_val,Total_Stock_val,Product_list_val):-
+    get_value(Factory,name,Name_val),
+    get_value(Factory,city,City_val),
+    get_value(Factory,max_capacity,Max_capacity_val),
+    get_value(Factory,total_products_stock,Total_Stock_val),
+    get_values(Factory,product_list,Product_list_val).
 
 delete_prod_from_list_F(Factory,Product):-
     remove_value(Factory,product_list,Product).
@@ -259,7 +267,7 @@ test_prod(Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,
     call_method(product,create_prod,[Product_frame]),
     show_frame(Product_frame),
     show_frame(factory),
-    call_method(Product_frame,set_prod_desc,[hallo,123,321,23,50]),
+    call_method(Product_frame,set_prod_desc,[hallo,123,0,23,50]),
     show_frame(Product_frame),
     call_method(Product_frame,read_prod_desc,[Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val]),
     write(Name_val),nl,write(Ref_val),nl,write(Stock_Quant_val),nl,write(Stock_log_list_val),nl,write(Material_list_val),nl,write(Price_val),nl,write(Min_stock_val),nl,
@@ -281,10 +289,10 @@ get(Name,Ref,Stock_Quant):-
 
 def_test:-
     call_method(product,create_prod,[product1]),
-    call_method(product1,set_prod_desc,[product1,123,321,_,_,246,50]),
+    call_method(product1,set_prod_desc,[product1,123,0,_,_,246,50]),
 
     call_method(product,create_prod,[product2]),
-    call_method(product2,set_prod_desc,[product2,123,321,_,_,246,50]),
+    call_method(product2,set_prod_desc,[product2,123,0,_,_,246,50]),
 
     call_method(material,create_material,[material1]),
     call_method(material1,set_material_desc,[material1,123,321,_]),
@@ -311,6 +319,60 @@ list_product_materials:-
     forall((member([Material,Stock],Material_List)),
         format('~w: ~w~n',[Material,Stock])
     ).
+
+get_prod_stock_list([],Final_list,Final_list).
+get_prod_stock_list([Product|RestProd],List,Final_List):-
+    call_method(Product,read_prod_desc,[_,_,Stock_Quant,Stock_List,_,_,_]),
+    ((Stock_Quant > 0) -> (
+        get_stock_list_from_product(Product,Stock_List,[],Final_Stock_List),
+        get_prod_stock_list(RestProd,[Final_Stock_List|List],Final_List)
+    );
+    get_prod_stock_list(RestProd,List,Final_List)).
+
+get_stock_list_from_product(_,[],Final,Final).
+get_stock_list_from_product(Product,[Stock|Rest],Current_List,Final_Stock_List):-
+    conc([Product],Stock,New_Stock),
+    get_stock_list_from_product(Product,Rest,[New_Stock|Current_List],Final_Stock_List).
+
+filter_date_cres(List,Sorted):-
+    sort(2,@=<,List,Sorted).
+
+filter_date_decres(List,Sorted):-
+    sort(2,@>=,List,Sorted).
+
+list_product_by_order:-
+    call_method(factory,read_factory_desc,[_,_,_,_,Products]),
+    get_prod_stock_list(Products,[],List),
+    format('Order by:~n 1:Crescent Order~n 2:Decrescent Order~n:'),
+    single_read_numb(Option),
+    (filter_option(Option,List,OrdList)) -> (
+        forall((member(SubList,OrdList)),
+            forall((member((Product,Date,Amount),SubList)),
+                format('Product ~w:~n  ~w - ~w',[Product,Date,Amount])
+            )
+        )
+    ); fail,!.
+    
+filter_option('r',OrdList,OrdList).
+filter_option(_,[],_):-
+    write('No Stock in Products'),
+    nl,
+    fail,
+    !.
+filter_option(1,List,FinalList):-
+    filter_date_cres(List,OrdList),
+    filter_option('r',OrdList,FinalList),
+    !.
+filter_option(2,List,FinalList):-
+    filter_date_decres(List,OrdList),
+    filter_option('r',OrdList,FinalList),
+    !.
+filter_option(_,_,_):-
+    write('Invalid Option'),
+    nl,
+    fail,
+    !.
+
 
 /*--------------------------------------------------*/
 /*------------ADD MATERIALS TO PRODUCT--------------*/
