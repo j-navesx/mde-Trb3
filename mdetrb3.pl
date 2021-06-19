@@ -148,7 +148,8 @@ def_alarm:-
     new_slot(alarm,count, 0),
 
     % Metodos
-    new_slot(alarm,genmsg,genmsg_F).
+    new_slot(alarm,genmsg,genmsg_F),
+    new_slot(alarm,read_alarm_desc,read_alarm_desc_F).
 
 /*--------------------------------------------------*/
 /*---------------------METHODS----------------------*/
@@ -185,6 +186,11 @@ genmsg_F(_, Event, Time_stamp) :-
     write('New alarm: '), 
     write(Name), 
     nl.
+
+read_alarm_desc_F(Alarm, Event_val, Time_val, Count_val):-
+    get_value(Alarm,event,Event_val),
+    get_value(Alarm,time_stamp,Time_val),
+    get_value(Alarm,count,Count_val).
 
 /*---------------------PRODUCT----------------------*/
 
@@ -320,6 +326,10 @@ list_product_materials:-
         format('~w: ~w~n',[Material,Stock])
     ).
 
+
+
+
+
 get_prod_stock_list([],Final_list,Final_list).
 get_prod_stock_list([Product|RestProd],List,Final_List):-
     call_method(Product,read_prod_desc,[_,_,Stock_Quant,Stock_List,_,_,_]),
@@ -373,6 +383,27 @@ filter_option(_,_,_):-
     fail,
     !.
 
+
+
+
+list_alarms:-
+    call_method(alarm,read_alarm_desc,[_,_,Count]),
+    get_alarms(Count,[],Alarm_List),
+    forall(member(Alarm,Alarm_List),
+        forall(member((Event,Time),Alarm),
+            format('~w - (~w)~n',[Event,Time])
+        )
+    ).
+get_alarms(0,[],[]):-
+    write('There is no alarms'),nl,
+    !.
+get_alarms(0,FL,FL).
+get_alarms(Count,List,Final_List):-
+    concat(alarm,Count,AlarmName),
+    call_method(AlarmName,read_alarm_desc,[Event,Time,_]),
+    NewCount is Count-1,
+    get_alarms(NewCount,[[Event,Time]|List],Final_List),
+    !.
 
 /*--------------------------------------------------*/
 /*------------ADD MATERIALS TO PRODUCT--------------*/
