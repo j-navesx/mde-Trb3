@@ -121,9 +121,11 @@ def_product:-
     new_slot(product,set_prod_desc,set_prod_desc_F),
     new_slot(product,delete_prod,delete_prod_F),
     new_slot(product,encomenda), % Demon - caso não haja stock manda fazer 
-    new_slot(product,fabrico). % Demon - caso não haja peças necessárias (generate alarm msg)
+    new_slot(product,fabrico,fabrico_F), % Demon - caso não haja peças necessárias (generate alarm msg)
 
     % Demons
+    new_demon(product,encomenda,encomenda_D,if_execute,before,side_effect),
+    new_demon(product,fabrico,fabrico_D,if_execute,before,side_effect).
 
 def_materials:-
     new_frame(material),
@@ -219,7 +221,16 @@ delete_prod_F(Product_frame):-
 
 encomenda_F. %TODO
 
-fabrico_F. %TODO
+fabrico_F(Product,Amount):-
+    get_value(Product,stock_log_list,Stock_log_list),
+    date(Date),
+    conc([Date],[Amount],Stock_log),
+    conc(Stock_log_list,[Stock_log],New_Stock_log_list),
+    new_value(Product,stock_log_list,New_Stock_log_list),
+    get_value(Product,stock_quantity,Stock_quantity),
+    New_Stock_quantity is Stock_quantity + Amount,
+    new_value(Product,stock_quantity,New_Stock_quantity),
+    format('~w ~w produzidos ~n',[Amount,Product]).
 
 /*--------------------MATERIAL----------------------*/
 
@@ -256,7 +267,30 @@ request_materials_F. %TODO
 /*---------------------DEMONS-----------------------*/
 /*--------------------------------------------------*/
 
+fabrico_D(Product,_,[Amount],_):-
+    get_value(Product,material_list,Material_list),
+    validate_materials_list(Amount,Material_list,0),
+    process_materials_list(Amount,Material_list),
+    !.
 
+validate_materials_list(_,[],0):-
+    write('Product not registered properly'),nl,!,fail.
+validate_materials_list(_,[],1).
+validate_materials_list(Amount,[[Material,Quant]|Rest],_):-
+    get_value(Material,stock_quantity,Stock_quantity),
+    Stock_quantity >= Quant*Amount,
+    validate_materials_list(Amount,Rest,1),!.
+validate_materials_list(_,_,_):-
+    write('Not enough material stock'),nl,!,fail.
+
+process_materials_list(_,[]).
+process_materials_list(Amount,[[Material,Quant]|Rest]):-
+    get_value(Material,stock_quantity,Stock_quantity),
+    New_Stock_quantity is Stock_quantity - Quant*Amount,
+    new_value(Material,stock_quantity,New_Stock_quantity),
+    process_materials_list(Amount,Rest),!.
+
+%call_method(product1,fabrico,[10]).
 
 /*--------------------------------------------------*/
 /*----------------------TEST------------------------*/
