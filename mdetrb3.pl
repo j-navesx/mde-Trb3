@@ -472,9 +472,9 @@ filter_option(_,_,_):-
 list_alarms:-
     call_method(alarm,read_alarm_desc,[_,_,Count]),
     get_alarms(Count,[],Alarm_List),
-    forall(member(Alarm,Alarm_List),
-        forall(member((Event,Time),Alarm),
-            format('~w - (~w)~n',[Event,Time])
+    forall(member(Alarm,Alarm_List),(
+        [Event, date(Year,Month,Day,Hour,Minute,_,_,_,_)] = Alarm,
+        format('~w - (~w-~w-~w ~w:~w)~n',[Event,Year,Month,Day,Hour,Minute])
         )
     ).
 get_alarms(0,[],[]):-
