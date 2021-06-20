@@ -673,6 +673,15 @@ alter_factory_info:-
     write('Enter new factory maximum capacity (press enter to skip): '),
     (single_read_numb(Max_capacity_val)->(call_method(factory,set_factory_desc,[_,_,Max_capacity_val,_]));true).
 
+print_all_products:-
+    call_method(factory,read_factory_desc,[_,_,_,_,Product_list]),
+    write('Lista de produtos: '),nl,nl,
+    forall((member(Product,Product_list)),
+        (
+            format(' -> ~w~n',[Product])
+        )
+    ).
+
 /*--------------------------------------------------*/
 /*-------------------ENCOMENDAR---------------------*/
 /*--------------------------------------------------*/
@@ -733,14 +742,15 @@ product_menu(Op):-
     write('Gestao de produto'),nl, 
     write('-----------------'),nl,
     nl,
-    write('1 -> Criar novo produto'),nl,
-    write('2 -> Visualizar descricao de produto'),nl,
-    write('3 -> Visualizar pecas de produto'),nl,
-    write('4 -> Alterar descricao de produto'),nl,
-    write('5 -> Adicionar material a produto'),nl,
-    write('6 -> Remover material de produto'),nl,
-    write('7 -> Eliminar produto existente'),nl,
-    write('8 -> Exit'), nl,
+    write('1 -> Visualizar Produtos'),nl,
+    write('2 -> Criar novo produto'),nl,
+    write('3 -> Visualizar descricao de produto'),nl,
+    write('4 -> Visualizar pecas de produto'),nl,
+    write('5 -> Alterar descricao de produto'),nl,
+    write('6 -> Adicionar material a produto'),nl,
+    write('7 -> Remover material de produto'),nl,
+    write('8 -> Eliminar produto existente'),nl,
+    write('9 -> Exit'), nl,
     single_read_option_2(Op1),
     Op is Op1 + 10,
     exec(Op),
@@ -776,14 +786,15 @@ exec(7):- list_product_by_order,press_any_key(_).
 exec(8):- list_alarms,press_any_key(_).
 exec(9):- !,fail.
 
-exec(11):- create_product.
-exec(12):- read_product_desc,press_any_key(_).
-exec(13):- list_product_materials,press_any_key(_).
-exec(14):- alter_product_desc.
-exec(15):- add_materials_to_list.
-exec(16):- rmv_materials_from_list.
-exec(17):- rmv_product.
-exec(18):- fail.
+exec(11):- print_all_products,press_any_key(_).
+exec(12):- create_product.
+exec(13):- read_product_desc,press_any_key(_).
+exec(14):- list_product_materials,press_any_key(_).
+exec(15):- alter_product_desc.
+exec(16):- add_materials_to_list.
+exec(17):- rmv_materials_from_list.
+exec(18):- rmv_product.
+exec(19):- fail.
 
 exec(21):- create_material.
 exec(22):- read_material_desc,press_any_key(_).
