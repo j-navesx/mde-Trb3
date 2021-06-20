@@ -25,7 +25,7 @@ single_read_option_1(Op):-
     read_string(user_input,"\n","\r",_,Str),
     string_to_atom(Str,Atom),
     atom_number(Atom,Op),
-    (Op >= 1, Op =< 7),!.
+    (Op >= 1, Op =< 9),!.
 single_read_option_1(Op):-
     single_read_option_1(Op).
 
@@ -124,8 +124,8 @@ def_product:-
     new_slot(product,fabrico,fabrico_F), % Demon - caso não haja peças necessárias (generate alarm msg)
 
     % Demons
-    %new_demon(product,stock_quantity,min_stock_Demon,if_write,after,side_effect),
-    %add_demon(product,stock_quantity,total_products_stock_Demon,if_write,after,side_effect),
+    new_demon(product,stock_quantity,min_stock_Demon,if_write,after,side_effect),
+    add_demon(product,stock_quantity,total_products_stock_Demon,if_write,before,side_effect),
     new_demon(product,encomenda,encomenda_D,if_execute,before,side_effect),
     new_demon(product,fabrico,fabrico_D,if_execute,before,side_effect).
 
@@ -160,10 +160,11 @@ def_alarm:-
 
 /*---------------------FACTORY----------------------*/
 
-set_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val):-
+set_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val,Total_products_stock):-
     (nonvar(Name_val)->new_value(Factory,name,Name_val);true),
     (nonvar(City_val)->new_value(Factory,city,City_val);true),
-    (nonvar(Max_capacity_val)->new_value(Factory,max_capacity,Max_capacity_val);true).
+    (nonvar(Max_capacity_val)->new_value(Factory,max_capacity,Max_capacity_val);true),
+    (nonvar(Total_products_stock)->new_value(Factory,total_products_stock,Total_products_stock);true).
 
 add_prod_to_list_F(Factory,Product):-
     add_value(Factory,product_list,Product).
@@ -339,59 +340,64 @@ process_order_stock(Product,Stock_quantity,Amount):-
 
 /*--------------------MIN_STOCK---------------------*/
 
-min_stock_Demon. %TODO
+min_stock_Demon(Product,_,Stock,_):-
+    get_value(Product,min_stock,Min_stock),
+    Min_stock > Stock,
+    write('Insufficient stock to meet minimum requirements'),nl,
+    Add_stock is 2*Min_stock,
+    call_method_1(Product,fabrico,(Add_stock)).
+
 
 /*--------------TOTAL_PRODUCTS_STOCK----------------*/
 
-total_products_stock_Demon. %TODO
+total_products_stock_Demon(Product,_,New_stock,New_stock):-
+    call_method(factory,read_factory_desc,[_,_,_,Total_stock_val,_]),
+    get_value(Product,stock_quantity,Old_stock),
+    Diff is New_stock - Old_stock,
+    New_total_stock_val is Total_stock_val + Diff,
+    call_method(factory,set_factory_desc,[_,_,_,New_total_stock_val]).
 
 /*--------------------------------------------------*/
 /*----------------------TEST------------------------*/
 /*--------------------------------------------------*/
 
-test_prod(Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val):-
-    atom_concat(product_,hallo,Product_frame),
-    call_method(product,create_prod,[Product_frame]),
-    show_frame(Product_frame),
-    show_frame(factory),
-    call_method(Product_frame,set_prod_desc,[hallo,123,0,23,50]),
-    show_frame(Product_frame),
-    call_method(Product_frame,read_prod_desc,[Name_val,Ref_val,Stock_Quant_val,Stock_log_list_val,Material_list_val,Price_val,Min_stock_val]),
-    write(Name_val),nl,write(Ref_val),nl,write(Stock_Quant_val),nl,write(Stock_log_list_val),nl,write(Material_list_val),nl,write(Price_val),nl,write(Min_stock_val),nl,
-    show_frame(factory),
-    show_frame(Product_frame).
-
-test_mat(Name_val,Ref_val,Stock_Quant_val):-
-    atom_concat(material_,hallo,Material_frame),
-    call_method(material,create_material,[Material_frame]),
-    show_frame(Material_frame),
-    call_method(Material_frame,set_material_desc,[hallo,123,321]),
-    show_frame(Material_frame),
-    call_method(Material_frame,read_material_desc,[Name_val,Ref_val,Stock_Quant_val,_]),
-    write(Name_val),nl,write(Ref_val),nl,write(Stock_Quant_val),nl,
-    show_frame(Material_frame).
-    
-get(Name,Ref,Stock_Quant):-
-    get_all_slots(material,[_,Name,_,Ref,_,_,Stock_Quant]).
-
 def_test:-
+    call_method(factory,set_factory_desc,['Test Factory','Lisboa',10000,_]),
+
     call_method(product,create_prod,[product1]),
-    call_method(product1,set_prod_desc,[product1,123,0,_,_,246,50]),
+    call_method(product1,set_prod_desc,[product1,123,_,_,_,24,10]),
+    call_method(product1,set_prod_desc,[_,_,_,_,[[material1,10],[material2,10]],_,_]),
 
     call_method(product,create_prod,[product2]),
-    call_method(product2,set_prod_desc,[product2,123,0,_,_,246,50]),
-
+    call_method(product2,set_prod_desc,[product2,123,_,_,_,26,10]),
+    call_method(product2,set_prod_desc,[_,_,_,_,[[material1,10],[material3,10]],_,_]),
+    
     call_method(material,create_material,[material1]),
-    call_method(material1,set_material_desc,[material1,123,321,_]),
+    call_method(material1,set_material_desc,[material1,123,1500,_]),
+    call_method(material1,add_product_material,[product1]),
+    call_method(material1,add_product_material,[product2]),
 
     call_method(material,create_material,[material2]),
-    call_method(material2,set_material_desc,[material2,123,321,_]),
+    call_method(material2,set_material_desc,[material2,123,1200,_]),
+    call_method(material2,add_product_material,[product1]),
 
     call_method(material,create_material,[material3]),
-    call_method(material3,set_material_desc,[material3,123,321,_]),
+    call_method(material3,set_material_desc,[material3,123,210,_]),
+    call_method(material3,add_product_material,[product2]),
 
     call_method(material,create_material,[material4]),
-    call_method(material4,set_material_desc,[material4,123,321,_]).
+    call_method(material4,set_material_desc,[material4,123,600,_]),
+    
+    call_method_1(product1,fabrico,15),
+    call_method_1(product2,fabrico,12),
+
+    get_value(product1,stock_log_list,[[date(Y1, M1, D1),V1]]),
+    NM1 is M1 - 2,
+    new_value(product1,stock_log_list,[[date(Y1, NM1, D1),V1]]),
+
+    get_value(product2,stock_log_list,[[date(Y2, M2, D2),V2]]),
+    NM2 is M2 - 1,
+    new_value(product2,stock_log_list,[[date(Y2, NM2, D2),V2]]).
 
 /*--------------------------------------------------*/
 /*--------------------------------------------------*/
@@ -400,7 +406,7 @@ def_test:-
 list_product_materials:-
     write('Enter product name: '),
     single_read_string(Product_name),
-    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,fail)),
     get_value(Product_name,material_list,Material_List),
     format('Materials for ~w:~n',[Product_name]),
     forall((member([Material,Stock],Material_List)),
@@ -515,7 +521,7 @@ process_set_prods_material(Product,Material_list,_):-
 add_materials_to_list:-
     write('Enter product name: '),
     single_read_string(Product),
-    (frame_exists(Product)->true;(write('Product not resgistered'),press_any_key(_),fail)),
+    (frame_exists(Product)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
     call_method(Product,read_prod_desc,[_,_,_,_,Material_list,_,_]),
     read_set_prods_material(Product,Material_list).
 
@@ -558,14 +564,19 @@ create_product:-
     write('Enter product reference: '),
     single_read_string(Product_ref),
     call_method(product,create_prod,[Product_name]),
-    call_method(Product_name,set_prod_desc,[Product_name,Product_ref,_,_,_,_,_]).
+    call_method(Product_name,set_prod_desc,[Product_name,Product_ref,_,_,_,_,_]),
+    write('Enter product minimum stock value: '),
+    single_read_numb(Min_stock_val),
+    call_method(Product_name,set_prod_desc,[_,_,_,_,_,_,Min_stock_val]),
+    write('Enter product price (press enter to skip): '),
+    (single_read_numb(Price)->(call_method(Product_name,set_prod_desc,[_,_,_,_,_,Price,_]));true).
 
 read_product_desc:-
     write('Enter product name: '),
     single_read_string(Product_name),
-    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
-    call_method(Product_name,read_prod_desc,[Name,Ref,Stock_Quant,_,_,Price,_]),
-    format('Name: ~w ~nReference: ~w ~nStock: ~w ~nPrice: ~w ~n',[Name,Ref,Stock_Quant,Price]).
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,fail)),
+    call_method(Product_name,read_prod_desc,[Name,Ref,Stock_Quant,_,_,Price,Min_stock_val]),
+    format('Name: ~w ~nReference: ~w ~nStock: ~w ~nPrice: ~w ~nMinimum stock: ~w ~n',[Name,Ref,Stock_Quant,Price,Min_stock_val]).
 
 alter_product_desc:-
     write('Enter product name: '),
@@ -589,8 +600,6 @@ rmv_product:-
     rmv_product_from_material_list(Product_name,Material_list),
     call_method_0(Product_name,delete_prod),!.
 
-
-
 /*--------------------------------------------------*/
 /*------------------MATERIAL CRUD-------------------*/
 /*--------------------------------------------------*/
@@ -607,7 +616,7 @@ create_material:-
 read_material_desc:-
     write('Enter material name: '),
     single_read_string(Material_name),
-    (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,press_any_key(_),fail)),
+    (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,fail)),
     call_method(Material_name,read_material_desc,[Name,Ref,Stock_Quant,_]),
     format('Name: ~w ~nReference: ~w ~nStock: ~w ~n',[Name,Ref,Stock_Quant]).
 
@@ -634,13 +643,29 @@ rmv_material:-
     call_method_0(Material_name,delete_material),!.
 
 /*--------------------------------------------------*/
+/*------------------FACTORY INFO--------------------*/
+/*--------------------------------------------------*/
+
+read_factory_info:-
+    call_method(factory,read_factory_desc,[Name_val,City_val,Max_capacity_val,Total_Stock_val,_]),
+    format('Name: ~w ~nCity: ~w ~nStorage capacity: ~w ~nStock: ~w ~n',[Name_val,City_val,Max_capacity_val,Total_Stock_val]).
+
+alter_factory_info:-
+    write('Enter new factory name (press enter to skip): '),
+    (single_read_string(Name_val)->(call_method(factory,set_factory_desc,[Name_val,_,_,_]));true),
+    write('Enter new factory city (press enter to skip): '),
+    (single_read_string(City_val)->(call_method(factory,set_factory_desc,[_,City_val,_,_]));true),
+    write('Enter new factory maximum capacity (press enter to skip): '),
+    (single_read_numb(Max_capacity_val)->(call_method(factory,set_factory_desc,[_,_,Max_capacity_val,_]));true).
+
+/*--------------------------------------------------*/
 /*-------------------ENCOMENDAR---------------------*/
 /*--------------------------------------------------*/
 
 encomendar:-
     write('Enter product name: '),
     single_read_string(Product_name),
-    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,fail)),
     write('Enter amount: '),
     single_read_numb(Amount),
     call_method_1(Product_name,encomenda,Amount).
@@ -653,7 +678,7 @@ encomendar.
 fabricar:-
     write('Enter product name: '),
     single_read_string(Product_name),
-    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
+    (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,fail)),
     write('Enter amount: '),
     single_read_numb(Amount),
     call_method_1(Product_name,fabrico,Amount).
@@ -672,13 +697,15 @@ menu(Op) :-
     write('Gestao da base de conhecimento'),nl, 
     write('------------------------------'),nl,
     nl,
-    write('1 -> Encomendar produto'),nl,
-    write('2 -> Fabricar produto'),nl,
-    write('3 -> Gestao de produtos'),nl,
-    write('4 -> Gestao de pecas'),nl,
-    write('5 -> Listagem ordenada'),nl,
-    write('6 -> Listagem de alertas'),nl,
-    write('7 -> Exit'), nl,
+    write('1 -> Visualizar informacoes da fabrica'),nl,
+    write('2 -> Alterar informacoes da fabrica'),nl,
+    write('3 -> Encomendar produto'),nl,
+    write('4 -> Fabricar produto'),nl,
+    write('5 -> Gestao de produtos'),nl,
+    write('6 -> Gestao de pecas'),nl,
+    write('7 -> Listagem ordenada'),nl,
+    write('8 -> Listagem de alertas'),nl,
+    write('9 -> Exit'), nl,
     single_read_option_1(Op),
     exec(Op),
     menu(_),
@@ -724,16 +751,18 @@ material_menu(Op):-
     !.
 material_menu(_).
 
-exec(1):- encomendar,press_any_key(_).
-exec(2):- fabricar,press_any_key(_).
-exec(3):- product_menu(_).
-exec(4):- material_menu(_).
-exec(5):- list_product_by_order,press_any_key(_).
-exec(6):- list_alarms,press_any_key(_).
-exec(7):- !,fail.
+exec(1):- read_factory_info,press_any_key(_).
+exec(2):- alter_factory_info.
+exec(3):- encomendar,press_any_key(_).
+exec(4):- fabricar,press_any_key(_).
+exec(5):- product_menu(_).
+exec(6):- material_menu(_).
+exec(7):- list_product_by_order,press_any_key(_).
+exec(8):- list_alarms,press_any_key(_).
+exec(9):- !,fail.
 
 exec(11):- create_product.
-exec(12):- read_product_desc.
+exec(12):- read_product_desc,press_any_key(_).
 exec(13):- list_product_materials,press_any_key(_).
 exec(14):- alter_product_desc.
 exec(15):- add_materials_to_list.
@@ -742,7 +771,7 @@ exec(17):- rmv_product.
 exec(18):- fail.
 
 exec(21):- create_material.
-exec(22):- read_material_desc.
+exec(22):- read_material_desc,press_any_key(_).
 exec(23):- alter_material_desc.
 exec(24):- rmv_material.
 exec(25):- fail.
