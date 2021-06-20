@@ -103,7 +103,7 @@ def_factory:-
     new_slot(factory,set_factory_desc,set_factory_desc_F),
     new_slot(factory,add_prod_to_list,add_prod_to_list_F),
     new_slot(factory,delete_prod_from_list,delete_prod_from_list_F),
-    new_slot(factory,read_factory_desc,read_fact_desc_F).
+    new_slot(factory,read_factory_desc,read_factory_desc_F).
 
 def_product:-
     new_frame(product),
@@ -170,7 +170,7 @@ set_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val,Total_products_sto
 add_prod_to_list_F(Factory,Product):-
     add_value(Factory,product_list,Product).
 
-read_fact_desc_F(Factory,Name_val,City_val,Max_capacity_val,Total_Stock_val,Product_list_val):-
+read_factory_desc_F(Factory,Name_val,City_val,Max_capacity_val,Total_Stock_val,Product_list_val):-
     get_value(Factory,name,Name_val),
     get_value(Factory,city,City_val),
     get_value(Factory,max_capacity,Max_capacity_val),
