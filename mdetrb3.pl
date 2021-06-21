@@ -35,7 +35,7 @@ single_read_option_2(Op):-
     read_string(user_input,"\n","\r",_,Str),
     string_to_atom(Str,Atom),
     atom_number(Atom,Op),
-    (Op >= 1, Op =< 8),!.
+    (Op >= 1, Op =< 9),!.
 single_read_option_2(Op):-
     single_read_option_2(Op).
 
@@ -303,22 +303,23 @@ rmv_product_material_F(Material_frame,Product):-
 
 fabrico_D(Product,_,[Amount],_):-
     get_value(Product,material_list,Material_list),
-    validate_materials_list(Amount,Material_list,0),
+    validate_materials_list(Product,Amount,Material_list,0),
     process_materials_list(Amount,Material_list),
     !.
 
-validate_materials_list(_,[],0):-
+validate_materials_list(_,_,[],0):-
     write('Product not registered properly'),nl,!,fail.
-validate_materials_list(_,[],1).
-validate_materials_list(Amount,[[Material,Quant]|Rest],_):-
+validate_materials_list(_,_,[],1).
+validate_materials_list(_,Amount,[[Material,Quant]|Rest],_):-
     get_value(Material,stock_quantity,Stock_quantity),
     Stock_quantity >= Quant*Amount,
-    validate_materials_list(Amount,Rest,1),!.
-validate_materials_list(_,_,_):-
+    validate_materials_list(_,Amount,Rest,1),!.
+validate_materials_list(Product,_,_,_):-
     write('Not enough material in stock'),nl,
     get_time(Time),
     stamp_date_time(Time, Stamp,local),
-    call_method_2(alarm,genmsg,"Not enough material in stock",Stamp),
+    atom_concat('Not enough material in stock ',Product,Alarm_msg),
+    call_method_2(alarm,genmsg,Alarm_msg,Stamp),
     !,fail.
 
 process_materials_list(_,[]).
@@ -585,6 +586,7 @@ read_product_desc:-
     (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,fail)),
     call_method(Product_name,read_prod_desc,[Name,Ref,Stock_Quant,_,_,Price,Min_stock_val,_]),
     format('Name: ~w ~nReference: ~w ~nStock: ~w ~nPrice: ~w ~nMinimum stock: ~w ~n',[Name,Ref,Stock_Quant,Price,Min_stock_val]).
+read_product_desc.
 
 alter_product_desc:-
     write('Enter product name: '),
@@ -592,6 +594,8 @@ alter_product_desc:-
     (frame_exists(Product_name)->true;(write('Product not resgistered'),nl,press_any_key(_),fail)),
     write('Enter product stock quantity (press enter to skip): '),
     (single_read_numb(Stock_Quant)->(call_method(Product_name,set_prod_desc,[_,_,Stock_Quant,_,_,_,_]));true),
+    write('Enter product mininum stock quantity (press enter to skip): '),
+    (single_read_numb(Min_stock)->(call_method(Product_name,set_prod_desc,[_,_,_,_,_,Min_stock,_]));true),
     write('Enter product price (press enter to skip): '),
     (single_read_numb(Price)->(call_method(Product_name,set_prod_desc,[_,_,_,_,_,Price,_]));true).
 
@@ -627,6 +631,7 @@ read_material_desc:-
     (frame_exists(Material_name)->true;(write('Material not resgistered'),nl,fail)),
     call_method(Material_name,read_material_desc,[Name,Ref,Stock_Quant,_]),
     format('Name: ~w ~nReference: ~w ~nStock: ~w ~n',[Name,Ref,Stock_Quant]).
+read_material_desc.
 
 alter_material_desc:-
     write('Enter material name: '),
@@ -728,7 +733,7 @@ menu(Op) :-
     write('3 -> Encomendar produto'),nl,
     write('4 -> Fabricar produto'),nl,
     write('5 -> Gestao de produtos'),nl,
-    write('6 -> Gestao de pecas'),nl,
+    write('6 -> Gestao de material'),nl,
     write('7 -> Listagem ordenada'),nl,
     write('8 -> Listagem de alertas'),nl,
     write('9 -> Exit'), nl,
