@@ -310,10 +310,10 @@ fabrico_D(Product,_,[Amount],_):-
 validate_materials_list(_,_,[],0):-
     write('Product not registered properly'),nl,!,fail.
 validate_materials_list(_,_,[],1).
-validate_materials_list(_,Amount,[[Material,Quant]|Rest],_):-
+validate_materials_list(Product,Amount,[[Material,Quant]|Rest],_):-
     get_value(Material,stock_quantity,Stock_quantity),
-    Stock_quantity >= Quant*Amount,
-    validate_materials_list(_,Amount,Rest,1),!.
+    Stock_quantity >= Quant*Amount,!,
+    validate_materials_list(Product,Amount,Rest,1).
 validate_materials_list(Product,_,_,_):-
     write('Not enough material in stock'),nl,
     get_time(Time),
@@ -354,7 +354,7 @@ min_stock_Demon(Product,_,Stock,_):-
     Min_stock > Stock,
     write('Insufficient stock to meet minimum requirements'),nl,
     Add_stock is 2*Min_stock,
-    call_method_1(Product,fabrico,(Add_stock)).
+    !,call_method_1(Product,fabrico,(Add_stock)).
 
 
 /*--------------TOTAL_PRODUCTS_STOCK----------------*/
