@@ -667,9 +667,9 @@ read_factory_info:-
 
 alter_factory_info:-
     write('Enter new factory name (press enter to skip): '),
-    (single_read_string(Name_val)->(call_method(factory,set_factory_desc,[Name_val,_,_,_]));true),
+    ((single_read_string(Name_val),not(Name_val=''))->(call_method(factory,set_factory_desc,[Name_val,_,_,_]));true),
     write('Enter new factory city (press enter to skip): '),
-    (single_read_string(City_val)->(call_method(factory,set_factory_desc,[_,City_val,_,_]));true),
+    ((single_read_string(City_val),not(City_val=''))->(call_method(factory,set_factory_desc,[_,City_val,_,_]));true),
     write('Enter new factory maximum capacity (press enter to skip): '),
     (single_read_numb(Max_capacity_val)->(call_method(factory,set_factory_desc,[_,_,Max_capacity_val,_]));true).
 
