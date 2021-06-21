@@ -370,6 +370,9 @@ total_products_stock_Demon(Product,_,New_stock,New_stock):-
 /*----------------------TEST------------------------*/
 /*--------------------------------------------------*/
 
+save_progress:-
+    save_kb('KB.pl').
+
 def_test:-
     call_method(factory,set_factory_desc,['Test Factory','Lisboa',10000,_]),
 
