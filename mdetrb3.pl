@@ -1,4 +1,5 @@
 :- ensure_loaded('golog2_32.pl').
+:- ensure_loaded('KB.pl').
 
 /*--------------------------------------------------*/
 /*------------biblioteca de coisas uteis------------*/
@@ -86,7 +87,8 @@ def_all:-
     def_product,
     def_materials,
     def_alarm,
-    def_test.
+    def_test,
+    save_kb('KB.pl').
 
 def_is_a:-
     new_relation(is_a, transitive, all, nil). 
